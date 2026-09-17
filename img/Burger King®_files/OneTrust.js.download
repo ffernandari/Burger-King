@@ -1,0 +1,141 @@
+/* eslint-disable no-unused-vars */
+(function () {
+	const loadedScripts = {}
+
+	// Ajuste os grupos se o tenant da OneTrust usar outros IDs.
+	// Comum: C0002 = Performance/Analytics, C0004 = Targeting/Advertising.
+	const GROUPS = {
+		analytics: ['C0002'],
+		marketing: ['C0004'],
+	}
+
+	function getActiveGroups() {
+		if (typeof window === 'undefined') return ''
+		return window.OnetrustActiveGroups || ''
+	}
+
+	function hasAnyGroup(groups) {
+		const active = getActiveGroups()
+		return groups.some(function (groupId) {
+			return active.includes(groupId)
+		})
+	}
+
+	function loadScriptOnce(key, src) {
+		if (loadedScripts[key]) return
+		if (document.querySelector('script[data-consent-key="' + key + '"]')) {
+			loadedScripts[key] = true
+			return
+		}
+
+		const script = document.createElement('script')
+		script.src = src
+		script.async = true
+		script.setAttribute('data-consent-key', key)
+		document.head.appendChild(script)
+		loadedScripts[key] = true
+	}
+
+	function runInlineOnce(key, fn) {
+		if (loadedScripts[key]) return
+		fn()
+		loadedScripts[key] = true
+	}
+
+	function enableAnalytics() {
+		loadScriptOnce(
+			'ga-base',
+			'https://www.googletagmanager.com/gtag/js?id=UA-128169789-14'
+		)
+		runInlineOnce('ga-init', function () {
+			window.dataLayer = window.dataLayer || []
+			window.gtag =
+				window.gtag ||
+				function () {
+					window.dataLayer.push(arguments)
+				}
+
+			window.gtag('js', new Date())
+			window.gtag('config', 'UA-128169789-14')
+			window.gtag('config', 'G-LF7MX75KL0')
+		})
+
+		loadScriptOnce('gtm', 'https://www.googletagmanager.com/gtm.js?id=GTM-MV555RV')
+	}
+
+	function enableMarketing() {
+		loadScriptOnce(
+			'google-ads',
+			'https://www.googletagmanager.com/gtag/js?id=AW-781817573'
+		)
+		runInlineOnce('google-ads-init', function () {
+			window.dataLayer = window.dataLayer || []
+			window.gtag =
+				window.gtag ||
+				function () {
+					window.dataLayer.push(arguments)
+				}
+
+			window.gtag('js', new Date())
+			window.gtag('config', 'AW-781817573')
+		})
+
+		loadScriptOnce('facebook-pixel', 'https://connect.facebook.net/en_US/fbevents.js')
+		runInlineOnce('facebook-init', function () {
+			if (window.fbq) {
+				window.fbq('init', '464072384114035')
+				window.fbq('track', 'PageView')
+				return
+			}
+
+			var fbq = function () {
+				fbq.callMethod
+					? fbq.callMethod.apply(fbq, arguments)
+					: fbq.queue.push(arguments)
+			}
+			if (!window._fbq) window._fbq = fbq
+			fbq.push = fbq
+			fbq.loaded = true
+			fbq.version = '2.0'
+			fbq.queue = []
+			window.fbq = fbq
+			window.fbq('init', '464072384114035')
+			window.fbq('track', 'PageView')
+		})
+
+		loadScriptOnce('twitter-pixel', 'https://static.ads-twitter.com/uwt.js')
+		runInlineOnce('twitter-init', function () {
+			window.twq =
+				window.twq ||
+				function () {
+					window.twq.exe
+						? window.twq.exe.apply(window.twq, arguments)
+						: window.twq.queue.push(arguments)
+				}
+			window.twq.version = '1.1'
+			window.twq.queue = window.twq.queue || []
+			window.twq('init', 'o5ms2')
+			window.twq('track', 'PageView')
+		})
+
+		loadScriptOnce('retargetly', 'https://api.retargetly.com/loader?id=916')
+	}
+
+	function applyConsent() {
+		if (hasAnyGroup(GROUPS.analytics)) {
+			enableAnalytics()
+		}
+
+		if (hasAnyGroup(GROUPS.marketing)) {
+			enableMarketing()
+		}
+	}
+
+	window.OptanonWrapper = function () {
+		applyConsent()
+	}
+
+	window.addEventListener('OneTrustGroupsUpdated', function () {
+		applyConsent()
+	})
+})()
